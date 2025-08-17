@@ -1,0 +1,26 @@
+[project]
+name = "marker"
+version = "1.8.3"
+description = "Marker converts documents to markdown, JSON, and HTML quickly and accurately."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi",
+    "marker-pdf[full]",
+    "python-multipart",
+    "starlette",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "uvicorn",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch" }
+torchvision = { index = "pytorch" }
+torchaudio = { index = "pytorch" }
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true

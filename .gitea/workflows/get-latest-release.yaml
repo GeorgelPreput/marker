@@ -1,0 +1,81 @@
+name: Update Marker PDF Release
+run-name: Update Marker PDF Release
+on:
+  workflow_dispatch:
+  schedule:
+  - cron: '0 18 * * *'
+
+jobs:
+  get_versions:
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.latest_tag.outputs.RELEASE_TAG }}
+      docker_tag: ${{ steps.docker_tag.outputs.DOCKER_TAG }}
+    steps:
+      - name: Get latest release tag
+        id: latest_tag
+        run: |
+          RELEASE_TAG=$(curl -s https://pypi.org/pypi/marker-pdf/json | jq -r '.info.version')
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "Latest release: $RELEASE_TAG"
+
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Get Docker image tag
+        id: docker_tag
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          DOCKER_TAG=$(grep -Po '(?<=^version = ")[^"]+' ${{ gitea.workspace }}/pyproject-cpu.toml)
+          echo "DOCKER_TAG=$DOCKER_TAG" >> $GITHUB_OUTPUT
+          echo "Docker tag: $DOCKER_TAG"
+  # update:
+  #   needs: get_versions
+  #   if: ${{
+  #       needs.get_versions.outputs.release_tag != needs.get_versions.outputs.docker_tag &&
+  #       needs.get_versions.outputs.release_tag != null
+  #     }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout main branch
+  #       uses: actions/checkout@v4
+  #       with:
+  #         # persist-credentials:true ensures GITHUB_TOKEN can push
+  #         persist-credentials: true
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #         ref: main
+
+  #     - name: Bump pyproject-cpu.toml version
+  #       run: |
+  #         echo "Updating pyproject-gpu.toml to ${{ needs.get_versions.outputs.release_tag }}"
+  #         sed -i \
+  #           -E 's#^version = "[0-9]+\.[0-9]+\.[0-9]+"#version = "${{ needs.get_versions.outputs.release_tag }}"#' \
+  #           pyproject-cpu.toml
+  #         git add pyproject-cpu.toml
+
+  #     - name: Bump pyproject-gpu.toml version
+  #       run: |
+  #         echo "Updating pyproject-gpu.toml to ${{ needs.get_versions.outputs.release_tag }}"
+  #         sed -i \
+  #           -E 's#^version = "[0-9]+\.[0-9]+\.[0-9]+"#version = "${{ needs.get_versions.outputs.release_tag }}"#' \
+  #           pyproject-gpu.toml
+  #         git add pyproject-gpu.toml
+
+  #     - name: Check if anything changed
+  #       id: check_changes
+  #       run: |
+  #         if git diff --cached --quiet; then
+  #           echo "no_changes=true" >> $GITHUB_OUTPUT
+  #         else
+  #           echo "no_changes=false" >> $GITHUB_OUTPUT
+  #         fi
+
+  #     - name: Commit & push version bump
+  #       if: ${{ steps.check_changes.outputs.no_changes == 'false' }}
+  #       run: |
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email "github-actions[bot]@users.noreply.github.com"
+
+  #         git commit -m "chore: Update Marker Docker version to ${{ needs.get_versions.outputs.release_tag }}"
+  #         git push origin HEAD:main
