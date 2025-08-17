@@ -1,0 +1,68 @@
+name: Build and Push Docker Image
+run-name: Build and Push Docker Image
+
+permissions:
+  contents: read
+  packages: write
+  actions: read
+  attestations: write
+  id-token: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main  # Change this to your preferred branch
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read version from pyproject-cpu.toml
+        id: cpu_get_version
+        run: |
+          CPU_VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-cpu.toml)-amd64-cpu
+          echo "CPU_VERSION=$CPU_VERSION"
+          echo "CPU_VERSION=$CPU_VERSION" >> $GITHUB_ENV
+
+      - name: Read version from pyproject-gpu.toml
+        id: gpu_get_version
+        run: |
+          GPU_VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-gpu.toml)-amd64-gpu
+          echo "GPU_VERSION=$GPU_VERSION"
+          echo "GPU_VERSION=$GPU_VERSION" >> $GITHUB_ENV
+
+      # Debug: Print out the CPU_VERSION and GPU_VERSION to verify they are correct
+      - name: Verify version
+        run: |
+          echo "The extracted version for CPU-only is: ${{ env.CPU_VERSION }}"
+          echo "The extracted version for GPU-enabled is: ${{ env.GPU_VERSION }}"
+
+      - name: Log in to GitHub Container Registry
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          echo ${REGISTRY_TOKEN} | docker login --username georgelpreput --password-stdin git.local.pixelfleet.online
+
+      - name: Build CPU-only Docker image
+        run: |
+          docker build --no-cache --platform linux/amd64 --build-arg BASE_IMAGE=python:3.13-slim-bookworm --build-arg BUILD_TYPE=cpu -t git.local.pixelfleet.online/georgelpreput/marker:${{ env.CPU_VERSION }} -t git.local.pixelfleet.online/georgelpreput/marker:latest-cpu -t ghcr.io/fuseainl/marker:latest -f ./Dockerfile .
+
+      - name: Push CPU-only Docker image
+        run: |
+          docker push git.local.pixelfleet.online/georgelpreput/marker:${{ env.CPU_VERSION }}
+          docker push git.local.pixelfleet.online/georgelpreput/marker:latest-cpu
+          docker push git.local.pixelfleet.online/georgelpreput/marker:latest
+
+      - name: Build GPU-enabled Docker image
+        run: |
+          docker build --no-cache --platform linux/amd64 --build-arg BASE_IMAGE=nvidia/cuda:12.6.3-cudnn-devel-ubuntu24.04 --build-arg BUILD_TYPE=gpu -t git.local.pixelfleet.online/georgelpreput/marker:${{ env.GPU_VERSION }} -t git.local.pixelfleet.online/georgelpreput/marker:latest-gpu -f ./Dockerfile .
+
+      - name: Push GPU-enabled Docker image
+        run: |
+          docker push git.local.pixelfleet.online/georgelpreput/marker:${{ env.GPU_VERSION }}
+          docker push git.local.pixelfleet.online/georgelpreput/marker:latest-gpu
