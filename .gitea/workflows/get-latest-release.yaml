@@ -43,6 +43,8 @@ jobs:
       }}
     runs-on: ubuntu-latest
     steps:
+      - name: List files
+        run: ls ${{ gitea.workspace }}
       - name: Bump pyproject-cpu.toml version
         run: |
           echo "Updating pyproject-gpu.toml to ${{ needs.get_versions.outputs.release_tag }}"

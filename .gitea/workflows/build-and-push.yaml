@@ -10,9 +10,9 @@ permissions:
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main  # Change this to your preferred branch
+  # push:
+  #   branches:
+  #     - main  # Change this to your preferred branch
 
 jobs:
   build-and-push:
