@@ -43,8 +43,14 @@ jobs:
       }}
     runs-on: ubuntu-latest
     steps:
-      - name: List files
-        run: ls ${{ gitea.workspace }}
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          # persist-credentials:true ensures GITHUB_TOKEN can push
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+
       - name: Bump pyproject-cpu.toml version
         run: |
           echo "Updating pyproject-gpu.toml to ${{ needs.get_versions.outputs.release_tag }}"
