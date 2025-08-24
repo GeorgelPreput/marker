@@ -1,6 +1,6 @@
 [project]
 name = "marker"
-version = "1.8.3"
+version = "1.8.5"
 description = "Marker converts documents to markdown, JSON, and HTML quickly and accurately."
 readme = "README.md"
 requires-python = ">=3.13"
