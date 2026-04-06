@@ -99,6 +99,7 @@ build:cpu:amd64:
   <<: *build-base
   stage: build
   tags: [amd64]
+  needs: [build:cpu:arm64]
   script:
     - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-cpu.toml)
     - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-cpu-amd64 -f Dockerfile.cpu .
@@ -108,6 +109,7 @@ build:gpu:arm64:
   <<: *build-base
   stage: build
   tags: [arm64]
+  needs: [build:cpu:amd64]
   script:
     - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-gpu.toml)
     - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-gpu-arm64 -f Dockerfile.gpu .
@@ -117,6 +119,7 @@ build:gpu:amd64:
   <<: *build-base
   stage: build
   tags: [amd64]
+  needs: [build:gpu:arm64]
   script:
     - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-gpu.toml)
     - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-gpu-amd64 -f Dockerfile.gpu .
