@@ -26,7 +26,7 @@ check-release:
     - if: $CI_PIPELINE_SOURCE == "web"
   script:
     - PYPI_VERSION=$(curl -s https://pypi.org/pypi/$PYPI_PACKAGE/json | jq -r '.info.version')
-    - CURRENT_VERSION=$(grep -oP '(?<=version = ")[^"]+' pyproject-cpu.toml)
+    - CURRENT_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-cpu.toml)
     - echo "PyPI=$PYPI_VERSION  Current=$CURRENT_VERSION"
     - |
       if [ "$PYPI_VERSION" != "$CURRENT_VERSION" ] && [ -n "$PYPI_VERSION" ]; then
@@ -92,7 +92,7 @@ build:cpu:arm64:
   stage: build
   tags: [arm64]
   script:
-    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-cpu.toml)
+    - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-cpu.toml)
     - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-cpu-arm64 -f Dockerfile.cpu .
     - docker push $DOCKER_IMAGE:${VERSION}-cpu-arm64
 
@@ -102,7 +102,7 @@ build:cpu:amd64:
   tags: [amd64]
   needs: [build:cpu:arm64]
   script:
-    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-cpu.toml)
+    - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-cpu.toml)
     - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-cpu-amd64 -f Dockerfile.cpu .
     - docker push $DOCKER_IMAGE:${VERSION}-cpu-amd64
 
@@ -112,7 +112,7 @@ build:gpu:arm64:
   tags: [arm64]
   needs: [build:cpu:amd64]
   script:
-    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-gpu.toml)
+    - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-gpu.toml)
     - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-gpu-arm64 -f Dockerfile.gpu .
     - docker push $DOCKER_IMAGE:${VERSION}-gpu-arm64
 
@@ -122,7 +122,7 @@ build:gpu:amd64:
   tags: [amd64]
   needs: [build:gpu:arm64]
   script:
-    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-gpu.toml)
+    - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-gpu.toml)
     - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-gpu-amd64 -f Dockerfile.gpu .
     - docker push $DOCKER_IMAGE:${VERSION}-gpu-amd64
 
@@ -136,7 +136,7 @@ manifest:cpu:
   tags: [arm64]
   needs: [build:cpu:arm64, build:cpu:amd64]
   script:
-    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-cpu.toml)
+    - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-cpu.toml)
     - ARM64=$DOCKER_IMAGE:${VERSION}-cpu-arm64
     - AMD64=$DOCKER_IMAGE:${VERSION}-cpu-amd64
     - |
@@ -152,7 +152,7 @@ manifest:gpu:
   tags: [arm64]
   needs: [build:gpu:arm64, build:gpu:amd64]
   script:
-    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-gpu.toml)
+    - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-gpu.toml)
     - ARM64=$DOCKER_IMAGE:${VERSION}-gpu-arm64
     - AMD64=$DOCKER_IMAGE:${VERSION}-gpu-amd64
     - |
