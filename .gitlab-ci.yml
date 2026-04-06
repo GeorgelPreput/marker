@@ -81,6 +81,7 @@ update-versions:
 # the arm64 GPU build will fail until that URL is updated for aarch64.
 
 .build-base: &build-base
+  image: docker:latest
   before_script:
     - echo "$REGISTRY_TOKEN" | docker login --username georgelpreput --password-stdin
   rules:
