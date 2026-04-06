@@ -1,0 +1,160 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+stages:
+  - check
+  - update
+  - build
+  - manifest
+
+variables:
+  DOCKER_IMAGE: georgelpreput/marker
+  PYPI_PACKAGE: marker-pdf
+
+# ── Release check (schedule / manual only) ───────────────────────────────────
+# Checks PyPI for a newer marker-pdf release than what is in pyproject-cpu.toml.
+# Passes UPDATE_NEEDED and NEW_VERSION to the next stage via dotenv artifact.
+
+check-release:
+  stage: check
+  tags: [arm64]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  script:
+    - PYPI_VERSION=$(curl -s https://pypi.org/pypi/$PYPI_PACKAGE/json | jq -r '.info.version')
+    - CURRENT_VERSION=$(grep -oP '(?<=version = ")[^"]+' pyproject-cpu.toml)
+    - echo "PyPI=$PYPI_VERSION  Current=$CURRENT_VERSION"
+    - |
+      if [ "$PYPI_VERSION" != "$CURRENT_VERSION" ] && [ -n "$PYPI_VERSION" ]; then
+        echo "UPDATE_NEEDED=true" > check.env
+      else
+        echo "UPDATE_NEEDED=false" > check.env
+      fi
+    - echo "NEW_VERSION=$PYPI_VERSION" >> check.env
+    - cat check.env
+  artifacts:
+    reports:
+      dotenv: check.env
+    expire_in: 1 hour
+
+# ── Version bump (schedule / manual only) ────────────────────────────────────
+# If a new release was found, bumps both pyproject toml files, commits, and
+# pushes to main — which triggers a fresh push pipeline to build the images.
+# Requires a GITLAB_TOKEN CI/CD variable with repository write access.
+
+update-versions:
+  stage: update
+  tags: [arm64]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  needs:
+    - job: check-release
+      artifacts: true
+  script:
+    - |
+      if [ "$UPDATE_NEEDED" != "true" ]; then
+        echo "Already on latest version ($NEW_VERSION), nothing to do."
+        exit 0
+      fi
+    - echo "Bumping to $NEW_VERSION"
+    - sed -i -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$NEW_VERSION\"/" pyproject-cpu.toml
+    - sed -i -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$NEW_VERSION\"/" pyproject-gpu.toml
+    - git config user.name "gitlab-ci[bot]"
+    - git config user.email "gitlab-ci[bot]@noreply.local"
+    - git remote set-url origin "https://oauth2:${GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+    - git add pyproject-cpu.toml pyproject-gpu.toml
+    - git diff --cached --quiet && echo "Nothing changed, skipping commit." || (
+        git commit -m "chore: Update Marker Docker version to $NEW_VERSION" &&
+        git push origin HEAD:$CI_DEFAULT_BRANCH
+      )
+
+# ── Docker builds (push to main only) ────────────────────────────────────────
+# Each job builds for its native architecture and pushes an arch-tagged
+# intermediate image. The manifest stage combines them into multi-arch tags.
+# Note: Dockerfile.gpu contains a hardcoded x86_64 CUDA keyring URL —
+# the arm64 GPU build will fail until that URL is updated for aarch64.
+
+.docker-login: &docker-login
+  before_script:
+    - echo "$REGISTRY_TOKEN" | docker login --username georgelpreput --password-stdin
+
+.build-rules: &build-rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+build:cpu:arm64:
+  <<: [*docker-login, *build-rules]
+  stage: build
+  tags: [arm64]
+  script:
+    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-cpu.toml)
+    - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-cpu-arm64 -f Dockerfile.cpu .
+    - docker push $DOCKER_IMAGE:${VERSION}-cpu-arm64
+
+build:cpu:amd64:
+  <<: [*docker-login, *build-rules]
+  stage: build
+  tags: [amd64]
+  script:
+    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-cpu.toml)
+    - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-cpu-amd64 -f Dockerfile.cpu .
+    - docker push $DOCKER_IMAGE:${VERSION}-cpu-amd64
+
+build:gpu:arm64:
+  <<: [*docker-login, *build-rules]
+  stage: build
+  tags: [arm64]
+  script:
+    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-gpu.toml)
+    - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-gpu-arm64 -f Dockerfile.gpu .
+    - docker push $DOCKER_IMAGE:${VERSION}-gpu-arm64
+
+build:gpu:amd64:
+  <<: [*docker-login, *build-rules]
+  stage: build
+  tags: [amd64]
+  script:
+    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-gpu.toml)
+    - docker build --no-cache -t $DOCKER_IMAGE:${VERSION}-gpu-amd64 -f Dockerfile.gpu .
+    - docker push $DOCKER_IMAGE:${VERSION}-gpu-amd64
+
+# ── Multi-arch manifests ──────────────────────────────────────────────────────
+# Combines the arch-specific images into multi-arch manifest lists.
+# Final tags (no arch suffix): v1.x.y-cpu, v1.x.y-gpu, latest-cpu, latest-gpu, latest
+
+manifest:cpu:
+  <<: [*docker-login, *build-rules]
+  stage: manifest
+  tags: [arm64]
+  needs: [build:cpu:arm64, build:cpu:amd64]
+  script:
+    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-cpu.toml)
+    - ARM64=$DOCKER_IMAGE:${VERSION}-cpu-arm64
+    - AMD64=$DOCKER_IMAGE:${VERSION}-cpu-amd64
+    - |
+      for TAG in $DOCKER_IMAGE:${VERSION}-cpu $DOCKER_IMAGE:latest-cpu $DOCKER_IMAGE:latest; do
+        docker manifest rm $TAG 2>/dev/null || true
+        docker manifest create $TAG $ARM64 $AMD64
+        docker manifest push $TAG
+      done
+
+manifest:gpu:
+  <<: [*docker-login, *build-rules]
+  stage: manifest
+  tags: [arm64]
+  needs: [build:gpu:arm64, build:gpu:amd64]
+  script:
+    - VERSION=v$(grep -oP '(?<=version = ")[^"]+' pyproject-gpu.toml)
+    - ARM64=$DOCKER_IMAGE:${VERSION}-gpu-arm64
+    - AMD64=$DOCKER_IMAGE:${VERSION}-gpu-amd64
+    - |
+      for TAG in $DOCKER_IMAGE:${VERSION}-gpu $DOCKER_IMAGE:latest-gpu; do
+        docker manifest rm $TAG 2>/dev/null || true
+        docker manifest create $TAG $ARM64 $AMD64
+        docker manifest push $TAG
+      done
