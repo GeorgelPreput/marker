@@ -16,7 +16,7 @@ docker buildx create --use --name hostnet-builder --driver-opt network=host
 - build via:
 
     ```bash
-    docker buildx build --builder hostnet-builder --no-cache --platform linux/amd64 -f ./Dockerfile.cpu --load .
+    docker buildx build --builder hostnet-builder --no-cache -f ./Dockerfile.cpu --load .
     ```
 
 - run via:
@@ -30,7 +30,7 @@ docker buildx create --use --name hostnet-builder --driver-opt network=host
 - build via:
 
     ```bash
-    docker buildx build --builder hostnet-builder --no-cache --platform linux/amd64 -f ./Dockerfile.gpu --load .
+    docker buildx build --builder hostnet-builder --no-cache -f ./Dockerfile.gpu --load .
     ```
 
 - run via:

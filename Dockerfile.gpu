@@ -1,6 +1,9 @@
 FROM nvidia/cuda:13.0.2-cudnn-devel-ubuntu24.04
 
 ARG LD_LIBRARY_PATH
+# TARGETARCH is a Docker predefined build ARG, automatically set to the target
+# platform architecture (amd64, arm64, etc.) on every docker build/buildx build.
+ARG TARGETARCH
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
     build-essential curl wget python3 python-is-python3 software-properties-common \
@@ -14,17 +17,16 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 #     ships the full toolkit on arm64, so it is skipped there.
 #   - libcusparselt0 / libcusparselt-dev (unversioned) are x86_64-only;
 #     arm64 uses libcusparselt0-cuda-13 / libcusparselt0-dev-cuda-13 instead.
-RUN ARCH=$(dpkg --print-architecture) && \
-    case "$ARCH" in \
+RUN case "$TARGETARCH" in \
       amd64) CUDA_REPO_ARCH="x86_64" ;; \
       arm64) CUDA_REPO_ARCH="sbsa" ;; \
-      *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+      *) echo "Unsupported architecture: $TARGETARCH" && exit 1 ;; \
     esac && \
     wget "https://developer.download.nvidia.com/compute/cuda/repos/debian12/${CUDA_REPO_ARCH}/cuda-keyring_1.1-1_all.deb" && \
     dpkg -i cuda-keyring_1.1-1_all.deb && \
     rm cuda-keyring_1.1-1_all.deb && \
     apt-get update && \
-    case "$ARCH" in \
+    case "$TARGETARCH" in \
       amd64) apt-get -y install libcusparselt0 libcusparselt-dev cuda-toolkit-13-0 ;; \
       arm64) apt-get -y install libcusparselt0-cuda-13 libcusparselt0-dev-cuda-13 ;; \
     esac
