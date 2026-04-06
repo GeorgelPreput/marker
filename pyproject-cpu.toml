@@ -1,9 +1,9 @@
 [project]
 name = "marker"
-version = "1.8.5"
+version = "1.10.2"
 description = "Marker converts documents to markdown, JSON, and HTML quickly and accurately."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "fastapi",
     "marker-pdf[full]",

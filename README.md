@@ -2,18 +2,27 @@
 
 Docker image for Marker document conversion service
 
+#### Before You Start
+
+Due to DNS issues in configuration, it has been necessary to use the host network. If that's not the case anymore,
+please ignore the CLI call below, as well as any `--builder hostnet-builder` parameters in `docker buildx build`
+
+```bash
+docker buildx create --use --name hostnet-builder --driver-opt network=host
+```
+
 ## CPU-only image
 
 - build via:
 
     ```bash
-    docker build --build-arg BASE_IMAGE=python:3.13-slim-bookworm --build-arg BUILD_TYPE=cpu -t marker:cpu .
+    docker buildx build --builder hostnet-builder --no-cache --platform linux/amd64 -f ./Dockerfile.cpu --load .
     ```
 
 - run via:
 
     ```bash
-    docker run -p 8001:8001 marker:cpu
+    docker run -it -d -p 8001:8001 --name marker marker:latest-gpu
     ```
 
 ## GPU-enabled image
@@ -21,13 +30,13 @@ Docker image for Marker document conversion service
 - build via:
 
     ```bash
-    docker build --build-arg BASE_IMAGE=nvidia/cuda:12.6.3-cudnn-devel-ubuntu24.04 --build-arg BUILD_TYPE=gpu -t marker:gpu .
+    docker buildx build --builder hostnet-builder --no-cache --platform linux/amd64 -f ./Dockerfile.gpu --load .
     ```
 
 - run via:
 
     ```bash
-    docker run --runtime=nvidia --gpus=all -it -d -p 8001:8001 marker:gpu
+    docker run --runtime=nvidia --gpus=all -it -d -p 8001:8001 --name marker marker:latest-gpu
     ```
 
 ## Usage
