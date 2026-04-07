@@ -18,6 +18,7 @@ RUN chmod -R 755 install.sh && ./install.sh && rm install.sh
 ENV PATH="/home/app/.local/bin:${PATH}"
 
 COPY pyproject-cpu.toml pyproject.toml
+ENV UV_LINK_MODE=copy
 RUN uv sync
 
 ENV PATH="/home/app/.venv/bin:${PATH}"
