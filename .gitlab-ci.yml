@@ -173,5 +173,5 @@ pushrm:
     DOCKER_USER: georgelpreput
     DOCKER_PASS: $REGISTRY_TOKEN
     PUSHRM_SHORT: "Docker image for Marker document conversion service"
-    PUSHRM_TARGET: docker.io/$DOCKER_IMAGE
+    PUSHRM_TARGET: docker.io/georgelpreput/marker
   script: /bin/true
