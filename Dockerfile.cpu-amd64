@@ -1,6 +1,7 @@
 FROM python:3.14-slim
 
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install --no-install-recommends -y \
     build-essential curl wget python3 python-is-python3 \
     zlib1g-dev libjpeg-dev libpng-dev libtiff-dev libfreetype6-dev \
     liblcms2-dev libwebp-dev libopenjp2-7-dev && \

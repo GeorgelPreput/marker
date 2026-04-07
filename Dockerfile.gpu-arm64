@@ -2,7 +2,8 @@ FROM nvidia/cuda:13.0.2-cudnn-devel-ubuntu24.04
 
 ARG LD_LIBRARY_PATH
 
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install --no-install-recommends -y \
     build-essential curl wget python3 python-is-python3 software-properties-common \
     zlib1g-dev libjpeg-dev libpng-dev libtiff-dev libfreetype6-dev \
     liblcms2-dev libwebp-dev libopenjp2-7-dev && \
