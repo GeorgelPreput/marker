@@ -1,0 +1,33 @@
+FROM nvidia/cuda:13.0.2-cudnn-devel-ubuntu24.04
+
+ARG LD_LIBRARY_PATH
+
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    build-essential curl wget python3 python-is-python3 software-properties-common \
+    zlib1g-dev libjpeg-dev libpng-dev libtiff-dev libfreetype6-dev \
+    liblcms2-dev libwebp-dev libopenjp2-7-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN wget "https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb" && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    rm cuda-keyring_1.1-1_all.deb && \
+    apt-get update && \
+    apt-get -y install libcusparselt0 libcusparselt-dev cuda-toolkit-13-0
+
+RUN useradd --create-home --shell /bin/bash app
+ENV HOME=/home/app
+
+USER app
+WORKDIR /home/app
+
+RUN python3 -m venv .venv
+RUN .venv/bin/pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
+RUN .venv/bin/pip install --no-cache-dir fastapi "marker-pdf[full]" python-multipart starlette uvicorn
+
+ENV PATH="/home/app/.venv/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/cuda-13.0/lib64:${LD_LIBRARY_PATH}"
+ENV CUDA_HOME="/usr/local/cuda-13.0"
+
+EXPOSE 8001
+
+CMD ["marker_server", "--host", "0.0.0.0", "--port", "8001"]
