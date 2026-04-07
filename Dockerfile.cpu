@@ -12,14 +12,9 @@ ENV HOME=/home/app
 USER app
 WORKDIR /home/app
 
-ADD --chown=app:app https://astral.sh/uv/install.sh install.sh
-RUN chmod -R 755 install.sh && ./install.sh && rm install.sh
-
-ENV PATH="/home/app/.local/bin:${PATH}"
-
-COPY pyproject-cpu.toml pyproject.toml
-ENV UV_LINK_MODE=copy
-RUN uv sync
+RUN python -m venv .venv
+RUN .venv/bin/pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+RUN .venv/bin/pip install --no-cache-dir fastapi "marker-pdf[full]" python-multipart starlette uvicorn
 
 ENV PATH="/home/app/.venv/bin:${PATH}"
 

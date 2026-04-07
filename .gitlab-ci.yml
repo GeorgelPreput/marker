@@ -82,6 +82,7 @@ update-versions:
 
 .build-base: &build-base
   image: docker:latest
+  timeout: 2h
   before_script:
     - echo "$REGISTRY_TOKEN" | docker login --username georgelpreput --password-stdin
   rules:
