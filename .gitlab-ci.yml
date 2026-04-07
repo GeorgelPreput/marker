@@ -94,7 +94,7 @@ build:gpu:amd64:
   tags: [amd64]
   script:
     - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-gpu.toml)
-    - docker build --no-cache --provenance=false -t $DOCKER_IMAGE:${VERSION}-gpu-amd64 -f Dockerfile.gpu-amd64 .
+    - docker build --no-cache --provenance=false --platform linux/amd64 -t $DOCKER_IMAGE:${VERSION}-gpu-amd64 -f Dockerfile.gpu-amd64 .
     - docker push $DOCKER_IMAGE:${VERSION}-gpu-amd64
 
 build:cpu:amd64:
@@ -104,7 +104,7 @@ build:cpu:amd64:
   needs: [build:gpu:amd64]
   script:
     - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-cpu.toml)
-    - docker build --no-cache --provenance=false -t $DOCKER_IMAGE:${VERSION}-cpu-amd64 -f Dockerfile.cpu-amd64 .
+    - docker build --no-cache --provenance=false --platform linux/amd64 -t $DOCKER_IMAGE:${VERSION}-cpu-amd64 -f Dockerfile.cpu-amd64 .
     - docker push $DOCKER_IMAGE:${VERSION}-cpu-amd64
 
 build:gpu:arm64:
@@ -114,7 +114,7 @@ build:gpu:arm64:
   needs: [build:cpu:amd64]
   script:
     - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-gpu.toml)
-    - docker build --no-cache --provenance=false -t $DOCKER_IMAGE:${VERSION}-gpu-arm64 -f Dockerfile.gpu-arm64 .
+    - docker build --no-cache --provenance=false --platform linux/arm64 -t $DOCKER_IMAGE:${VERSION}-gpu-arm64 -f Dockerfile.gpu-arm64 .
     - docker push $DOCKER_IMAGE:${VERSION}-gpu-arm64
 
 build:cpu:arm64:
@@ -124,7 +124,7 @@ build:cpu:arm64:
   needs: [build:gpu:arm64]
   script:
     - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-cpu.toml)
-    - docker build --no-cache --provenance=false -t $DOCKER_IMAGE:${VERSION}-cpu-arm64 -f Dockerfile.cpu-arm64 .
+    - docker build --no-cache --provenance=false --platform linux/arm64 -t $DOCKER_IMAGE:${VERSION}-cpu-arm64 -f Dockerfile.cpu-arm64 .
     - docker push $DOCKER_IMAGE:${VERSION}-cpu-arm64
 
 # ── Multi-arch manifests ──────────────────────────────────────────────────────
