@@ -164,7 +164,9 @@ manifest:gpu:
       done
 
 pushrm:
-  image: chko/docker-pushrm:1
+  image:
+    name: chko/docker-pushrm:1
+    entrypoint: ["/bin/sh", "-c", "/docker-pushrm"]
   stage: manifest
   tags: [arm64]
   needs: [manifest:cpu, manifest:gpu]
@@ -175,4 +177,5 @@ pushrm:
     DOCKER_PASS: $REGISTRY_TOKEN
     PUSHRM_SHORT: "Docker image for Marker document conversion service"
     PUSHRM_TARGET: docker.io/georgelpreput/marker
+    PUSHRM_FILE: $CI_PROJECT_DIR/README.md
   script: /bin/true
