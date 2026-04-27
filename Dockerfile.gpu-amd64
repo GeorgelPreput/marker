@@ -4,7 +4,7 @@ ARG LD_LIBRARY_PATH
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -y \
-    build-essential curl wget python3 python3-venv python-is-python3 software-properties-common \
+    build-essential curl wget python-is-python3 software-properties-common \
     zlib1g-dev libjpeg-dev libpng-dev libtiff-dev libfreetype6-dev \
     liblcms2-dev libwebp-dev libopenjp2-7-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -21,9 +21,13 @@ ENV HOME=/home/app
 USER app
 WORKDIR /home/app
 
-RUN python3 -m venv .venv
-RUN .venv/bin/pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
-RUN .venv/bin/pip install --no-cache-dir fastapi "marker-pdf[full]" python-multipart starlette uvicorn
+ADD --chown=app:app https://astral.sh/uv/install.sh install.sh
+RUN chmod -R 755 install.sh && ./install.sh && rm install.sh
+
+ENV PATH="/home/app/.local/bin:${PATH}"
+
+COPY pyproject-gpu.toml pyproject.toml
+RUN uv sync
 
 ENV PATH="/home/app/.venv/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/usr/local/cuda-13.0/lib64:${LD_LIBRARY_PATH}"

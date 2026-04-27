@@ -2,7 +2,7 @@ FROM python:3.14.4-slim-trixie
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -y \
-    build-essential curl wget python3 python-is-python3 \
+    build-essential curl wget python-is-python3 \
     zlib1g-dev libjpeg-dev libpng-dev libtiff-dev libfreetype6-dev \
     liblcms2-dev libwebp-dev libopenjp2-7-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -13,9 +13,13 @@ ENV HOME=/home/app
 USER app
 WORKDIR /home/app
 
-RUN python -m venv .venv
-RUN .venv/bin/pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-RUN .venv/bin/pip install --no-cache-dir fastapi "marker-pdf[full]" python-multipart starlette uvicorn
+ADD --chown=app:app https://astral.sh/uv/install.sh install.sh
+RUN chmod -R 755 install.sh && ./install.sh && rm install.sh
+
+ENV PATH="/home/app/.local/bin:${PATH}"
+
+COPY pyproject-cpu.toml pyproject.toml
+RUN uv sync
 
 ENV PATH="/home/app/.venv/bin:${PATH}"
 

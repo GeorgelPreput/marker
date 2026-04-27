@@ -21,44 +21,7 @@ All tags are multi-arch manifests covering `amd64` and `arm64`.
 
 ## Building locally
 
-#### Before You Start
-
-Due to DNS issues in configuration, it has been necessary to use the host network. If that's not the case anymore,
-please ignore the CLI call below, as well as any `--builder hostnet-builder` parameters in `docker buildx build`
-
-```bash
-docker buildx create --use --name hostnet-builder --driver-opt network=host
-```
-
-### CPU-only image
-
-- build via:
-
-    ```bash
-    docker buildx build --builder hostnet-builder --no-cache --provenance=false -f ./Dockerfile.cpu --load .
-    ```
-
-- run via:
-
-    ```bash
-    docker run -it -d -p 8001:8001 --name marker marker:latest-cpu
-    ```
-
-### GPU-enabled image
-
-Requires an NVIDIA GPU with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/index.html) installed on the host. Built against CUDA 13.0.
-
-- build via:
-
-    ```bash
-    docker buildx build --builder hostnet-builder --no-cache --provenance=false -f ./Dockerfile.gpu --load .
-    ```
-
-- run via:
-
-    ```bash
-    docker run --runtime=nvidia --gpus=all -it -d -p 8001:8001 --name marker marker:latest-gpu
-    ```
+See [docs/building-locally.md](docs/building-locally.md) for the full walkthrough using the `Makefile`.
 
 ## Usage
 

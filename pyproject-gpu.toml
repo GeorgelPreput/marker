@@ -13,6 +13,7 @@ dependencies = [
     "torchvision",
     "torchaudio",
     "uvicorn",
+    "weasyprint>=68.0",
 ]
 
 [tool.uv.sources]
