@@ -13,28 +13,62 @@ stages:
 variables:
   DOCKER_IMAGE: georgelpreput/marker
   PYPI_PACKAGE: marker-pdf
+  MARKER_REPO: datalab-to/marker
 
 # ── Release check (schedule / manual only) ───────────────────────────────────
-# Checks PyPI for a newer marker-pdf release than what is in pyproject-cpu.toml.
-# Passes UPDATE_NEEDED and NEW_VERSION to the next stage via dotenv artifact.
+# Checks PyPI for a newer marker-pdf release. If found, also looks up the
+# surya-ocr version that release pins in its upstream pyproject.toml, and
+# verifies that surya-ocr version is actually published on PyPI. Only when
+# both pieces line up do we proceed with the bump.
+# Passes UPDATE_NEEDED, NEW_MARKER_VERSION, and NEW_SURYA_VERSION to the next
+# stage via dotenv artifact.
 
 check-release:
   stage: check
+  image: alpine:latest
   tags: [arm64]
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
+  before_script:
+    - apk add --no-cache curl jq
   script:
-    - PYPI_VERSION=$(curl -s https://pypi.org/pypi/$PYPI_PACKAGE/json | jq -r '.info.version')
-    - CURRENT_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-cpu.toml)
-    - echo "PyPI=$PYPI_VERSION  Current=$CURRENT_VERSION"
+    - echo "UPDATE_NEEDED=false" > check.env
+    - PYPI_MARKER_VERSION=$(curl -fsSL https://pypi.org/pypi/$PYPI_PACKAGE/json | jq -r '.info.version')
+    - CURRENT_MARKER_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-cpu.toml)
+    - echo "marker-pdf  PyPI=$PYPI_MARKER_VERSION  Current=$CURRENT_MARKER_VERSION"
     - |
-      if [ "$PYPI_VERSION" != "$CURRENT_VERSION" ] && [ -n "$PYPI_VERSION" ]; then
-        echo "UPDATE_NEEDED=true" > check.env
-      else
-        echo "UPDATE_NEEDED=false" > check.env
+      if [ -z "$PYPI_MARKER_VERSION" ] || [ "$PYPI_MARKER_VERSION" = "$CURRENT_MARKER_VERSION" ]; then
+        echo "marker-pdf is already on the latest published version. Nothing to do."
+        cat check.env
+        exit 0
       fi
-    - echo "NEW_VERSION=$PYPI_VERSION" >> check.env
+    # Look up the surya-ocr version pinned by marker at the new release tag.
+    - MARKER_PYPROJECT_URL="https://raw.githubusercontent.com/${MARKER_REPO}/v${PYPI_MARKER_VERSION}/pyproject.toml"
+    - echo "Fetching $MARKER_PYPROJECT_URL"
+    - |
+      REQUIRED_SURYA_VERSION=$(curl -fsSL "$MARKER_PYPROJECT_URL" \
+        | grep -E '^[[:space:]]*surya-ocr[[:space:]]*=' \
+        | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+        | head -n1)
+    - |
+      if [ -z "$REQUIRED_SURYA_VERSION" ]; then
+        echo "Could not determine required surya-ocr version from marker v${PYPI_MARKER_VERSION}. Skipping update."
+        cat check.env
+        exit 0
+      fi
+    - echo "marker v${PYPI_MARKER_VERSION} requires surya-ocr ${REQUIRED_SURYA_VERSION}"
+    # Confirm that exact surya-ocr version is published on PyPI.
+    - SURYA_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/surya-ocr/${REQUIRED_SURYA_VERSION}/json")
+    - |
+      if [ "$SURYA_STATUS" != "200" ]; then
+        echo "surya-ocr==${REQUIRED_SURYA_VERSION} not yet on PyPI (HTTP $SURYA_STATUS). Treating as nothing to update."
+        cat check.env
+        exit 0
+      fi
+    - echo "UPDATE_NEEDED=true" > check.env
+    - echo "NEW_MARKER_VERSION=$PYPI_MARKER_VERSION" >> check.env
+    - echo "NEW_SURYA_VERSION=$REQUIRED_SURYA_VERSION" >> check.env
     - cat check.env
   artifacts:
     reports:
@@ -58,19 +92,23 @@ update-versions:
   script:
     - |
       if [ "$UPDATE_NEEDED" != "true" ]; then
-        echo "Already on latest version ($NEW_VERSION), nothing to do."
+        echo "Nothing to update."
         exit 0
       fi
-    - echo "Bumping to $NEW_VERSION"
-    - sed -i -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$NEW_VERSION\"/" pyproject-cpu.toml
-    - sed -i -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$NEW_VERSION\"/" pyproject-gpu.toml
+    - echo "Bumping marker-pdf to $NEW_MARKER_VERSION, surya-ocr to $NEW_SURYA_VERSION"
+    - |
+      for f in pyproject-cpu.toml pyproject-gpu.toml; do
+        sed -i -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$NEW_MARKER_VERSION\"/" "$f"
+        sed -i -E "s/(marker-pdf\[[^]]*\])==[0-9]+\.[0-9]+\.[0-9]+/\1==$NEW_MARKER_VERSION/" "$f"
+        sed -i -E "s/surya-ocr==[0-9]+\.[0-9]+\.[0-9]+/surya-ocr==$NEW_SURYA_VERSION/" "$f"
+      done
     - git config user.name "gitlab-ci[bot]"
     - git config user.email "gitlab-ci[bot]@noreply.local"
     - git remote set-url origin "https://oauth2:${GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
     - git add pyproject-cpu.toml pyproject-gpu.toml
     - |
       git diff --cached --quiet && echo "Nothing changed, skipping commit." || (
-        git commit -m "chore: Update Marker Docker version to $NEW_VERSION" &&
+        git commit -m "chore: Update marker-pdf to $NEW_MARKER_VERSION and surya-ocr to $NEW_SURYA_VERSION" &&
         git push origin HEAD:$CI_DEFAULT_BRANCH
       )
 
@@ -207,7 +245,9 @@ pushrm:
   script: /bin/true
 
 mirror:github:
-  image: alpine/git:latest
+  image:
+    name: alpine/git:latest
+    entrypoint: [""]
   stage: manifest
   tags: [arm64]
   needs: [pushrm]
