@@ -257,4 +257,4 @@ mirror:github:
     GIT_DEPTH: 0
   script:
     - git remote add github "https://GeorgelPreput:${GITHUB_TOKEN}@github.com/GeorgelPreput/marker.git"
-    - git push github HEAD:$CI_DEFAULT_BRANCH
+    - git push github "HEAD:refs/heads/$CI_DEFAULT_BRANCH"
