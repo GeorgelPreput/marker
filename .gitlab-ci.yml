@@ -127,9 +127,20 @@ build:cpu:arm64:
     - docker build --no-cache --provenance=false --platform linux/arm64 -t $DOCKER_IMAGE:${VERSION}-cpu-arm64 -f Dockerfile.cpu-arm64 .
     - docker push $DOCKER_IMAGE:${VERSION}-cpu-arm64
 
+build:tegra:arm64:
+  <<: *build-base
+  stage: build
+  tags: [arm64]
+  needs: [build:cpu:arm64]
+  script:
+    - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-gpu.toml)
+    - docker build --no-cache --provenance=false --platform linux/arm64 -t $DOCKER_IMAGE:${VERSION}-tegra-arm64 -f Dockerfile.tegra-arm64 .
+    - docker push $DOCKER_IMAGE:${VERSION}-tegra-arm64
+
 # ── Multi-arch manifests ──────────────────────────────────────────────────────
 # Combines the arch-specific images into multi-arch manifest lists.
 # Final tags (no arch suffix): v1.x.y-cpu, v1.x.y-gpu, latest-cpu, latest-gpu, latest
+# Tegra is arm64-only: v1.x.y-tegra, latest-tegra
 
 manifest:cpu:
   <<: *build-base
@@ -163,13 +174,28 @@ manifest:gpu:
         docker manifest push $TAG
       done
 
+manifest:tegra:
+  <<: *build-base
+  stage: manifest
+  tags: [arm64]
+  needs: [build:tegra:arm64]
+  script:
+    - VERSION=v$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject-gpu.toml)
+    - ARM64=$DOCKER_IMAGE:${VERSION}-tegra-arm64
+    - |
+      for TAG in $DOCKER_IMAGE:${VERSION}-tegra $DOCKER_IMAGE:latest-tegra; do
+        docker manifest rm $TAG 2>/dev/null || true
+        docker manifest create $TAG $ARM64
+        docker manifest push $TAG
+      done
+
 pushrm:
   image:
     name: chko/docker-pushrm:1
     entrypoint: ["/bin/sh", "-c", "/docker-pushrm"]
   stage: manifest
   tags: [arm64]
-  needs: [manifest:cpu, manifest:gpu]
+  needs: [manifest:cpu, manifest:gpu, manifest:tegra]
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   variables:

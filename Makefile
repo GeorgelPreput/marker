@@ -7,7 +7,7 @@ DOCKER_BUILD := docker build --no-cache --provenance=false
 
 # ── Build targets ─────────────────────────────────────────────────────────────
 
-.PHONY: build-gpu-amd64 build-cpu-amd64 build-gpu-arm64 build-cpu-arm64
+.PHONY: build-gpu-amd64 build-cpu-amd64 build-gpu-arm64 build-cpu-arm64 build-tegra-arm64
 
 build-gpu-amd64:
 	$(DOCKER_BUILD) --platform linux/amd64 \
@@ -29,9 +29,14 @@ build-cpu-arm64:
 		-t $(DOCKER_IMAGE):$(CPU_VERSION)-cpu-arm64 \
 		-f Dockerfile.cpu-arm64 .
 
+build-tegra-arm64:
+	$(DOCKER_BUILD) --platform linux/arm64 \
+		-t $(DOCKER_IMAGE):$(GPU_VERSION)-tegra-arm64 \
+		-f Dockerfile.tegra-arm64 .
+
 # ── Push targets ──────────────────────────────────────────────────────────────
 
-.PHONY: push-gpu-amd64 push-cpu-amd64 push-gpu-arm64 push-cpu-arm64
+.PHONY: push-gpu-amd64 push-cpu-amd64 push-gpu-arm64 push-cpu-arm64 push-tegra-arm64
 
 push-gpu-amd64:
 	docker push $(DOCKER_IMAGE):$(GPU_VERSION)-gpu-amd64
@@ -45,9 +50,12 @@ push-gpu-arm64:
 push-cpu-arm64:
 	docker push $(DOCKER_IMAGE):$(CPU_VERSION)-cpu-arm64
 
+push-tegra-arm64:
+	docker push $(DOCKER_IMAGE):$(GPU_VERSION)-tegra-arm64
+
 # ── Manifest targets ──────────────────────────────────────────────────────────
 
-.PHONY: manifest-cpu manifest-gpu
+.PHONY: manifest-cpu manifest-gpu manifest-tegra
 
 manifest-cpu:
 	$(eval ARM64 := $(DOCKER_IMAGE):$(CPU_VERSION)-cpu-arm64)
@@ -69,5 +77,15 @@ manifest-gpu:
 		$(DOCKER_IMAGE):latest-gpu; do \
 		docker manifest rm $$TAG 2>/dev/null || true; \
 		docker manifest create $$TAG $(ARM64) $(AMD64); \
+		docker manifest push $$TAG; \
+	done
+
+manifest-tegra:
+	$(eval ARM64 := $(DOCKER_IMAGE):$(GPU_VERSION)-tegra-arm64)
+	for TAG in \
+		$(DOCKER_IMAGE):$(GPU_VERSION)-tegra \
+		$(DOCKER_IMAGE):latest-tegra; do \
+		docker manifest rm $$TAG 2>/dev/null || true; \
+		docker manifest create $$TAG $(ARM64); \
 		docker manifest push $$TAG; \
 	done

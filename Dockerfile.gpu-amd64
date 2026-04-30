@@ -13,7 +13,9 @@ RUN wget "https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_
     dpkg -i cuda-keyring_1.1-1_all.deb && \
     rm cuda-keyring_1.1-1_all.deb && \
     apt-get update && \
-    apt-get -y install libcusparselt0 libcusparselt-dev cuda-toolkit-13-0
+    apt-get -y install libcusparselt0 libcusparselt-dev cuda-toolkit-13-0 && \
+    rm -f /opt/nvidia/nsight-compute/*/host/target-linux-x64/plugins/efa_metrics/nic_sampler \
+          /opt/nvidia/nsight-systems/*/target-linux-x64/plugins/efa_metrics/nic_sampler
 
 RUN useradd --create-home --shell /bin/bash app
 ENV HOME=/home/app
