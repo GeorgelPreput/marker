@@ -6,14 +6,14 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi",
-    "marker-pdf[full]",
+    "marker-pdf[full]==1.10.2",
+    "surya-ocr==0.17.1",
     "python-multipart",
     "starlette",
-    "torch",
+    "torch>=2.7.0",
     "torchvision",
     "torchaudio",
     "uvicorn",
-    "weasyprint>=68.0",
 ]
 
 [tool.uv.sources]

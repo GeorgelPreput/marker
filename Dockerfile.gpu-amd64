@@ -17,7 +17,8 @@ RUN wget "https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_
     rm -f /opt/nvidia/nsight-compute/*/host/target-linux-x64/plugins/efa_metrics/nic_sampler \
           /opt/nvidia/nsight-systems/*/target-linux-x64/plugins/efa_metrics/nic_sampler
 
-RUN useradd --create-home --shell /bin/bash app
+RUN userdel -r ubuntu && \
+    useradd --uid 1000 --create-home --shell /bin/bash app
 ENV HOME=/home/app
 
 USER app

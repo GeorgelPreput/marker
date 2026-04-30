@@ -12,26 +12,31 @@ DOCKER_BUILD := docker build --no-cache --provenance=false
 build-gpu-amd64:
 	$(DOCKER_BUILD) --platform linux/amd64 \
 		-t $(DOCKER_IMAGE):$(GPU_VERSION)-gpu-amd64 \
+		--no-cache \
 		-f Dockerfile.gpu-amd64 .
 
 build-cpu-amd64:
 	$(DOCKER_BUILD) --platform linux/amd64 \
 		-t $(DOCKER_IMAGE):$(CPU_VERSION)-cpu-amd64 \
+		--no-cache \
 		-f Dockerfile.cpu-amd64 .
 
 build-gpu-arm64:
 	$(DOCKER_BUILD) --platform linux/arm64 \
 		-t $(DOCKER_IMAGE):$(GPU_VERSION)-gpu-arm64 \
+		--no-cache \
 		-f Dockerfile.gpu-arm64 .
 
 build-cpu-arm64:
 	$(DOCKER_BUILD) --platform linux/arm64 \
 		-t $(DOCKER_IMAGE):$(CPU_VERSION)-cpu-arm64 \
+		--no-cache \
 		-f Dockerfile.cpu-arm64 .
 
 build-tegra-arm64:
 	$(DOCKER_BUILD) --platform linux/arm64 \
 		-t $(DOCKER_IMAGE):$(GPU_VERSION)-tegra-arm64 \
+		--no-cache \
 		-f Dockerfile.tegra-arm64 .
 
 # ── Push targets ──────────────────────────────────────────────────────────────

@@ -1,0 +1,22 @@
+services:
+  marker:
+    # For GPU (amd64/arm64): change image tag to latest-gpu, add the deploy section below
+    # For CPU (amd64/arm64): change image tag to latest-cpu or just leave it at latest
+    # For Tegra: change image tag to tegra-arm64, add the deploy section below
+    image: georgelpreput/marker:latest
+    ports:
+      - "8001:8001"
+    volumes:
+      - marker-cache:/home/app/.cache
+
+    # Uncomment to enable GPU access (requires nvidia-container-toolkit on the host):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  marker-cache:
