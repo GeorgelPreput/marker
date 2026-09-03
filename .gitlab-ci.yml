@@ -229,7 +229,7 @@ manifest:tegra:
 
 pushrm:
   image:
-    name: chko/docker-pushrm:1
+    name: chko/docker-pushrm:1.9.0
     entrypoint: ["/bin/sh", "-c", "/docker-pushrm"]
   stage: manifest
   tags: [arm64]
