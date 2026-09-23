@@ -28,6 +28,19 @@ RUN chmod -R 755 install.sh && ./install.sh && rm install.sh
 
 ENV PATH="/home/app/.local/bin:${PATH}"
 
+# Surya 0.22 OCR/recognition spawns llama-server; ship a pinned llama.cpp build.
+# cudart bundle includes the CUDA 13.4 runtime, so it runs regardless of the image toolkit.
+ARG LLAMA_TAG=b11135
+RUN curl -fsSL -o /tmp/llama.tar.gz \
+      "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}/cudart-llama-${LLAMA_TAG}-bin-ubuntu-cuda-13.4-arm64.tar.gz" && \
+    echo "1a5ebc98080f03667513229987a28cf8da3ef058c1299c94f8c573ee0b6f46d7  /tmp/llama.tar.gz" | sha256sum -c - && \
+    mkdir -p /home/app/.local/llama.cpp && \
+    tar xzf /tmp/llama.tar.gz -C /home/app/.local/llama.cpp --strip-components=1 && \
+    rm /tmp/llama.tar.gz
+ENV PATH="/home/app/.local/llama.cpp:${PATH}"
+ENV LD_LIBRARY_PATH="/home/app/.local/llama.cpp:${LD_LIBRARY_PATH}"
+RUN llama-server --version
+
 COPY pyproject-gpu.toml pyproject.toml
 RUN uv sync
 

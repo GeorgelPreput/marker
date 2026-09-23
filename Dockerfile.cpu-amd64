@@ -19,6 +19,17 @@ RUN chmod -R 755 install.sh && ./install.sh && rm install.sh
 
 ENV PATH="/home/app/.local/bin:${PATH}"
 
+# Surya 0.22 OCR/recognition spawns llama-server; ship a pinned llama.cpp build.
+ARG LLAMA_TAG=b11135
+RUN curl -fsSL -o /tmp/llama.tar.gz \
+      "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}/llama-${LLAMA_TAG}-bin-ubuntu-x64.tar.gz" && \
+    echo "72a0d4440016ff9a47d63b33a6a67408bb81624eda1f38dd1eb5697ab0f13743  /tmp/llama.tar.gz" | sha256sum -c - && \
+    mkdir -p /home/app/.local/llama.cpp && \
+    tar xzf /tmp/llama.tar.gz -C /home/app/.local/llama.cpp --strip-components=1 && \
+    rm /tmp/llama.tar.gz
+ENV PATH="/home/app/.local/llama.cpp:${PATH}"
+RUN llama-server --version
+
 COPY pyproject-cpu.toml pyproject.toml
 RUN uv sync
 
