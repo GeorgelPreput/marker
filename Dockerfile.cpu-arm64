@@ -36,6 +36,10 @@ RUN uv sync
 ENV PATH="/home/app/.venv/bin:${PATH}"
 COPY --chown=app:app marker_sitecustomize.py /home/app/marker-patch/sitecustomize.py
 ENV PYTHONPATH="/home/app/marker-patch"
+
+# Surya auto-selects a vLLM backend on NVIDIA GPUs, which requires docker-in-container.
+# Pin llama.cpp: it is shipped in this image and uses the GPU via the CUDA llama-server.
+ENV SURYA_INFERENCE_BACKEND="llamacpp"
 RUN python -c "from marker.providers.powerpoint import PowerPointProvider; assert PowerPointProvider._handle_image.__module__ == 'sitecustomize'"
 
 EXPOSE 8001

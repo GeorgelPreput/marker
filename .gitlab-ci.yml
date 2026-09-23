@@ -119,8 +119,8 @@ update-versions:
 # ── Docker builds (push to main only) ────────────────────────────────────────
 # Each job builds for its native architecture and pushes an arch-tagged
 # intermediate image. The manifest stage combines them into multi-arch tags.
-# Note: Dockerfile.gpu contains a hardcoded x86_64 CUDA keyring URL —
-# the arm64 GPU build will fail until that URL is updated for aarch64.
+# All images share the same slim Python base; CUDA ships via llama.cpp tarballs
+# and torch's vendored pip wheels, so no CUDA base image is needed anywhere.
 
 .build-base: &build-base
   image: docker:latest
