@@ -20,7 +20,11 @@ The GPL-3 license of this repository does not reflect the license of Marker itse
 
 #### AI notice
 
-Although it started as a fully-human setup, since April 2026 I've been using Claude to help speed things up.
+Although it started as a fully-human setup, since April 2026 I've been using LLMs to help speed things up.
+
+#### Known limitations
+
+WMF and EMF graphics are skipped, at least for PowerPoint inputs. As of now, I've considered workarounds, but the more robust ones involve installing Inkscape or LibreOffice into the image, which will blow it up considerably. When I find something reliable and small enough, I'll add it.
 
 ## Available tags
 
