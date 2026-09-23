@@ -23,6 +23,8 @@ LLAMA_PATH = 'ENV PATH="/home/app/.local/llama.cpp:${PATH}"'
 LLAMA_SMOKE = "RUN llama-server --version"
 LLAMA_TAG = "ARG LLAMA_TAG=b11135"
 LLAMA_CHECKSUM = "| sha256sum -c -"
+SURYA_BACKEND = 'ENV SURYA_INFERENCE_BACKEND="llamacpp"'
+SLIM_BASE = "FROM python:3.14.7-slim-trixie"
 
 
 class DockerfileTest(unittest.TestCase):
@@ -36,6 +38,10 @@ class DockerfileTest(unittest.TestCase):
 
                 self.assertIn(LLAMA_TAG, text)
                 self.assertIn(LLAMA_CHECKSUM, text)
+                self.assertIn(SURYA_BACKEND, text)
+                self.assertIn(SLIM_BASE, text)
+                self.assertNotIn("nvidia/cuda", text)
+                self.assertNotIn("cuda-toolkit", text)
                 self.assertLess(local_path_position, llama_position)
                 self.assertLess(llama_position, smoke_position)
 

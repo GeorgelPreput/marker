@@ -1,25 +1,17 @@
-FROM nvidia/cuda:13.4.1-cudnn-devel-ubuntu24.04
-
-ARG LD_LIBRARY_PATH
+# Surya OCR needs no CUDA base image or host toolkit: llama.cpp bundles its CUDA 13.4
+# runtime in the tarball below, and torch vendors CUDA via its pip wheels (cu130 index).
+# The NVIDIA driver is injected from the host by the container toolkit at runtime.
+FROM python:3.14.7-slim-trixie
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -y \
-    build-essential curl wget python-is-python3 software-properties-common \
+    build-essential curl wget python-is-python3 \
     zlib1g-dev libjpeg-dev libpng-dev libtiff-dev libfreetype6-dev \
     liblcms2-dev libwebp-dev libopenjp2-7-dev \
     libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-noto-core && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN wget "https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb" && \
-    dpkg -i cuda-keyring_1.1-1_all.deb && \
-    rm cuda-keyring_1.1-1_all.deb && \
-    apt-get update && \
-    apt-get -y install libcusparselt0 libcusparselt-dev cuda-toolkit-13-0 && \
-    rm -f /opt/nvidia/nsight-compute/*/host/target-linux-x64/plugins/efa_metrics/nic_sampler \
-          /opt/nvidia/nsight-systems/*/target-linux-x64/plugins/efa_metrics/nic_sampler
-
-RUN userdel -r ubuntu && \
-    useradd --uid 1000 --create-home --shell /bin/bash app
+RUN useradd --uid 1000 --create-home --shell /bin/bash app
 ENV HOME=/home/app
 
 USER app
@@ -31,16 +23,20 @@ RUN chmod -R 755 install.sh && ./install.sh && rm install.sh
 ENV PATH="/home/app/.local/bin:${PATH}"
 
 # Surya 0.22 OCR/recognition spawns llama-server; ship a pinned llama.cpp build.
-# cudart bundle includes the CUDA 13.4 runtime, so it runs regardless of the image toolkit.
+# The cuda build provides the binaries; the cudart bundle provides the CUDA 13.4 runtime
+# (libcudart/libcublas) the binaries are linked against.
 ARG LLAMA_TAG=b11135
 RUN curl -fsSL -o /tmp/llama.tar.gz \
+      "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}/llama-${LLAMA_TAG}-bin-ubuntu-cuda-13.4-x64.tar.gz" && \
+    echo "f3f43a9d0f7287a1ac694656ba3bfbcd36e8a8fc7f148a61aeedd65eef8317be  /tmp/llama.tar.gz" | sha256sum -c - && \
+    curl -fsSL -o /tmp/llama-cudart.tar.gz \
       "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}/cudart-llama-${LLAMA_TAG}-bin-ubuntu-cuda-13.4-x64.tar.gz" && \
-    echo "20ac80cc8a6585546d694054e5ec0c9dcfd1d226cd890473001db4099f994ab3  /tmp/llama.tar.gz" | sha256sum -c - && \
+    echo "20ac80cc8a6585546d694054e5ec0c9dcfd1d226cd890473001db4099f994ab3  /tmp/llama-cudart.tar.gz" | sha256sum -c - && \
     mkdir -p /home/app/.local/llama.cpp && \
     tar xzf /tmp/llama.tar.gz -C /home/app/.local/llama.cpp --strip-components=1 && \
-    rm /tmp/llama.tar.gz
+    tar xzf /tmp/llama-cudart.tar.gz -C /home/app/.local/llama.cpp --strip-components=1 && \
+    rm /tmp/llama.tar.gz /tmp/llama-cudart.tar.gz
 ENV PATH="/home/app/.local/llama.cpp:${PATH}"
-ENV LD_LIBRARY_PATH="/home/app/.local/llama.cpp:${LD_LIBRARY_PATH}"
 RUN llama-server --version
 
 COPY pyproject-gpu.toml pyproject.toml
@@ -49,10 +45,11 @@ RUN uv sync
 ENV PATH="/home/app/.venv/bin:${PATH}"
 COPY --chown=app:app marker_sitecustomize.py /home/app/marker-patch/sitecustomize.py
 ENV PYTHONPATH="/home/app/marker-patch"
+
+# Surya auto-selects a vLLM backend on NVIDIA GPUs, which requires docker-in-container.
+# Pin llama.cpp: it is shipped in this image and uses the GPU via the CUDA llama-server.
+ENV SURYA_INFERENCE_BACKEND="llamacpp"
 RUN python -c "from marker.providers.powerpoint import PowerPointProvider; assert PowerPointProvider._handle_image.__module__ == 'sitecustomize'"
-ENV LD_LIBRARY_PATH="/usr/local/cuda-13.0/lib64:${LD_LIBRARY_PATH}"
-ENV CUDA_HOME="/usr/local/cuda-13.0"
 
 EXPOSE 8001
-
 CMD ["marker_server", "--host", "0.0.0.0", "--port", "8001"]
