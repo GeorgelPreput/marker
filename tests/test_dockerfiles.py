@@ -19,9 +19,26 @@ SMOKE_TEST = (
     "RUN python -c \"from marker.providers.powerpoint import PowerPointProvider; "
     "assert PowerPointProvider._handle_image.__module__ == 'sitecustomize'\""
 )
+LLAMA_PATH = 'ENV PATH="/home/app/.local/llama.cpp:${PATH}"'
+LLAMA_SMOKE = "RUN llama-server --version"
+LLAMA_TAG = "ARG LLAMA_TAG=b11135"
+LLAMA_CHECKSUM = "| sha256sum -c -"
 
 
 class DockerfileTest(unittest.TestCase):
+    def test_all_images_ship_a_pinned_llama_cpp_build(self):
+        for filename in DOCKERFILES:
+            with self.subTest(filename=filename):
+                text = (ROOT / filename).read_text()
+                local_path_position = text.index('ENV PATH="/home/app/.local/bin:${PATH}"')
+                llama_position = text.index(LLAMA_PATH)
+                smoke_position = text.index(LLAMA_SMOKE)
+
+                self.assertIn(LLAMA_TAG, text)
+                self.assertIn(LLAMA_CHECKSUM, text)
+                self.assertLess(local_path_position, llama_position)
+                self.assertLess(llama_position, smoke_position)
+
     def test_all_images_load_the_patch_from_the_virtual_environment(self):
         for filename in DOCKERFILES:
             with self.subTest(filename=filename):
