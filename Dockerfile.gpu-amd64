@@ -23,15 +23,20 @@ RUN chmod -R 755 install.sh && ./install.sh && rm install.sh
 ENV PATH="/home/app/.local/bin:${PATH}"
 
 # Surya 0.22 OCR/recognition spawns llama-server; ship a pinned llama.cpp build.
-# The cuda build provides the binaries; the cudart bundle provides the CUDA 13.4 runtime
+# The cuda build provides the binaries; the cudart bundle provides the CUDA runtime
 # (libcudart/libcublas) the binaries are linked against.
+# CUDA 12.8 on purpose, not 13.4: ggml's release binaries ship PTX (not SASS) for
+# sm_75 (Turing/GRID T4) — the 580-series drivers on the prod GPU nodes are CUDA 13.0
+# and cannot JIT PTX compiled by the 13.4 toolchain ("unsupported toolchain" error).
+# 12.8-generated PTX JITs fine on a 13.0 driver (older PTX on newer driver is the
+# supported direction), and the bundled 12.8 runtime runs natively below it.
 ARG LLAMA_TAG=b11135
 RUN curl -fsSL -o /tmp/llama.tar.gz \
-      "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}/llama-${LLAMA_TAG}-bin-ubuntu-cuda-13.4-x64.tar.gz" && \
-    echo "f3f43a9d0f7287a1ac694656ba3bfbcd36e8a8fc7f148a61aeedd65eef8317be  /tmp/llama.tar.gz" | sha256sum -c - && \
+      "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}/llama-${LLAMA_TAG}-bin-ubuntu-cuda-12.8-x64.tar.gz" && \
+    echo "03bac99330977c84893ab1c4712ccac31a32acc010aaa69cb5176af18e955bae  /tmp/llama.tar.gz" | sha256sum -c - && \
     curl -fsSL -o /tmp/llama-cudart.tar.gz \
-      "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}/cudart-llama-${LLAMA_TAG}-bin-ubuntu-cuda-13.4-x64.tar.gz" && \
-    echo "20ac80cc8a6585546d694054e5ec0c9dcfd1d226cd890473001db4099f994ab3  /tmp/llama-cudart.tar.gz" | sha256sum -c - && \
+      "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}/cudart-llama-${LLAMA_TAG}-bin-ubuntu-cuda-12.8-x64.tar.gz" && \
+    echo "9e92308d22c5e6fe706b24d2ca0a69ef7c29af1379fc518e70d9a741d1dceb2c  /tmp/llama-cudart.tar.gz" | sha256sum -c - && \
     mkdir -p /home/app/.local/llama.cpp && \
     tar xzf /tmp/llama.tar.gz -C /home/app/.local/llama.cpp --strip-components=1 && \
     tar xzf /tmp/llama-cudart.tar.gz -C /home/app/.local/llama.cpp --strip-components=1 && \
