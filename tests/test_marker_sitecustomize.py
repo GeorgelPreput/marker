@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 
 PATCH_FILE = Path(__file__).resolve().parents[1] / "marker_sitecustomize.py"
-EXPECTED_MARKER_VERSION = "2.0.0"
+EXPECTED_MARKER_VERSION = "2.1.0"
 
 
 class FakeImage:

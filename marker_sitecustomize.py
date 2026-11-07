@@ -3,7 +3,7 @@
 from importlib.metadata import version
 
 
-EXPECTED_MARKER_VERSION = "2.0.0"
+EXPECTED_MARKER_VERSION = "2.1.0"
 UNSUPPORTED_IMAGE_TYPES = {"image/x-wmf", "image/x-emf"}
 
 
