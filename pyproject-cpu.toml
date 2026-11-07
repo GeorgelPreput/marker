@@ -1,13 +1,13 @@
 [project]
 name = "marker"
-version = "1.10.2"
+version = "2.0.0"
 description = "Marker converts documents to markdown, JSON, and HTML quickly and accurately."
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi",
-    "marker-pdf[full]==1.10.2",
-    "surya-ocr==0.17.1",
+    "marker-pdf[full]==2.0.0",
+    "surya-ocr==0.22.1",
     "python-multipart",
     "starlette",
     "torch>=2.7.0",

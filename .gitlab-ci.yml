@@ -48,7 +48,7 @@ check-release:
     - echo "Fetching $MARKER_PYPROJECT_URL"
     - |
       REQUIRED_SURYA_VERSION=$(curl -fsSL "$MARKER_PYPROJECT_URL" \
-        | grep -E '^[[:space:]]*surya-ocr[[:space:]]*=' \
+        | grep -oE 'surya-ocr[^0-9]*[0-9]+\.[0-9]+\.[0-9]+' \
         | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
         | head -n1)
     - |
@@ -107,10 +107,14 @@ update-versions:
         sed -i -E "s/(marker-pdf\[[^]]*\])==[0-9]+\.[0-9]+\.[0-9]+/\1==$NEW_MARKER_VERSION/" "$f"
         sed -i -E "s/surya-ocr==[0-9]+\.[0-9]+\.[0-9]+/surya-ocr==$NEW_SURYA_VERSION/" "$f"
       done
+    - |
+      for f in marker_sitecustomize.py tests/test_marker_sitecustomize.py; do
+        sed -i -E "s/^EXPECTED_MARKER_VERSION = \"[0-9]+\.[0-9]+\.[0-9]+\"/EXPECTED_MARKER_VERSION = \"$NEW_MARKER_VERSION\"/" "$f"
+      done
     - git config user.name "gitlab-ci[bot]"
     - git config user.email "gitlab-ci[bot]@noreply.local"
     - git remote set-url origin "https://oauth2:${GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
-    - git add pyproject-cpu.toml pyproject-gpu.toml
+    - git add pyproject-cpu.toml pyproject-gpu.toml marker_sitecustomize.py tests/test_marker_sitecustomize.py
     - |
       git diff --cached --quiet && echo "Nothing changed, skipping commit." || (
         git commit -m "chore: Update marker-pdf to $NEW_MARKER_VERSION and surya-ocr to $NEW_SURYA_VERSION" &&
@@ -120,8 +124,8 @@ update-versions:
 # ── Docker builds (push to main only) ────────────────────────────────────────
 # Each job builds for its native architecture and pushes an arch-tagged
 # intermediate image. The manifest stage combines them into multi-arch tags.
-# Note: Dockerfile.gpu contains a hardcoded x86_64 CUDA keyring URL —
-# the arm64 GPU build will fail until that URL is updated for aarch64.
+# All images share the same slim Python base; CUDA ships via llama.cpp tarballs
+# and torch's vendored pip wheels, so no CUDA base image is needed anywhere.
 
 .build-base: &build-base
   image: docker:latest
