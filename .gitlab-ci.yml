@@ -82,7 +82,12 @@ check-release:
 
 update-versions:
   stage: update
+  image:
+    name: alpine/git:latest
+    entrypoint: [""]
   tags: [arm64]
+  variables:
+    GIT_DEPTH: 0
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
